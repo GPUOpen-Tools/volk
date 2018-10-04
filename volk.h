@@ -33,10 +33,11 @@ struct VolkDeviceTable;
 
 /**
  * Initialize library by loading Vulkan loader; call this function before creating the Vulkan instance.
+ * If pExplicitIcdPath is not NULL, try first to load the ICD directly from the given path.
  *
  * Returns VK_SUCCESS on success and VK_ERROR_INITIALIZATION_FAILED otherwise.
  */
-VkResult volkInitialize();
+VkResult volkInitialize(const char* pExplicitIcdPath);
 
 /**
  * Initialize library by providing a custom handler to load global symbols.
