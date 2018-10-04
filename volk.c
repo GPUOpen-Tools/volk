@@ -68,10 +68,13 @@ static PFN_vkVoidFunction nullProcAddrStub(void* context, const char* name)
 	return NULL;
 }
 
-VkResult volkInitialize(void)
+VkResult volkInitialize(voidconst char* pExplicitIcdPath)
 {
-#if defined(_WIN32)
-	HMODULE module = LoadLibraryA("vulkan-1.dll");
+    // Load the Vulkan loader by default, unless an explicit ICD path was given.
+#ifdef _WIN32
+    const char* pLibToLoad = (pExplicitIcdPath == NULL ? "vulkan-1.dll" : pExplicitIcdPath);
+	HMODULE module = LoadLibraryA(pLibToLoad);
+
 	if (!module)
 		return VK_ERROR_INITIALIZATION_FAILED;
 
@@ -98,7 +101,8 @@ VkResult volkInitialize(void)
 
 	vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)dlsym(module, "vkGetInstanceProcAddr");
 #else
-	void* module = dlopen("libvulkan.so.1", RTLD_NOW | RTLD_LOCAL);
+    const char* pLibToLoad = (pExplicitIcdPath == NULL ? "libvulkan.so" : pExplicitIcdPath);
+	void* module = dlopen(pLibToLoad, RTLD_NOW | RTLD_LOCAL);
 	if (!module)
 		module = dlopen("libvulkan.so", RTLD_NOW | RTLD_LOCAL);
 	if (!module)
