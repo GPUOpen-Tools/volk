@@ -1,5 +1,6 @@
 /* This file is part of volk library; see volk.h for version/license details */
 #include "volk.h"
+#include <assert.h>
 
 #ifdef _WIN32
 #	include <windows.h>
@@ -26,17 +27,27 @@ static PFN_vkVoidFunction vkGetDeviceProcAddrStub(void* context, const char* nam
 	return vkGetDeviceProcAddr((VkDevice)context, name);
 }
 
+#ifdef _WIN32
+// Keep track of our module here.
+HMODULE s_module = NULL;
+#endif // _WIN32
+
 VkResult volkInitialize(const char* pExplicitIcdPath)
 {
     // Load the Vulkan loader by default, unless an explicit ICD path was given.
 #ifdef _WIN32
+    if (s_module != NULL)
+    {
+        BOOL rc = FreeLibrary(s_module);
+        assert(rc == TRUE);
+    }
     const char* pLibToLoad = (pExplicitIcdPath == NULL ? "vulkan-1.dll" : pExplicitIcdPath);
-	HMODULE module = LoadLibraryA(pLibToLoad);
+	s_module = LoadLibraryA(pLibToLoad);
 
-	if (!module)
+	if (!s_module)
 		return VK_ERROR_INITIALIZATION_FAILED;
 
-	vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)GetProcAddress(module, "vkGetInstanceProcAddr");
+	vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)GetProcAddress(s_module, "vkGetInstanceProcAddr");
 #elif defined(__APPLE__)
 	void* module = dlopen("libvulkan.dylib", RTLD_NOW | RTLD_LOCAL);
 	if (!module)
