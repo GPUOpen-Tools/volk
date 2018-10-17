@@ -1,6 +1,7 @@
 /* This file is part of volk library; see volk.h for version/license details */
 /* clang-format off */
 #include "volk.h"
+#include <cassert>
 
 #ifdef _WIN32
 	typedef const char* LPCSTR;
@@ -68,18 +69,28 @@ static PFN_vkVoidFunction nullProcAddrStub(void* context, const char* name)
 	return NULL;
 }
 
-VkResult volkInitialize(voidconst char* pExplicitIcdPath)
+#ifdef _WIN32
+// Keep track of our module here.
+HMODULE s_module = NULL;
+#endif // _WIN32
+
+VkResult volkInitialize(const char* pExplicitIcdPath)
 {
     // Load the Vulkan loader by default, unless an explicit ICD path was given.
 #ifdef _WIN32
+    if (s_module != NULL)
+    {
+        BOOL rc = FreeLibrary(s_module);
+        assert(rc == TRUE);
+    }
     const char* pLibToLoad = (pExplicitIcdPath == NULL ? "vulkan-1.dll" : pExplicitIcdPath);
-	HMODULE module = LoadLibraryA(pLibToLoad);
+	s_module = LoadLibraryA(pLibToLoad);
 
-	if (!module)
+	if (!s_module)
 		return VK_ERROR_INITIALIZATION_FAILED;
 
 	// note: function pointer is cast through void function pointer to silence cast-function-type warning on gcc8
-	vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)(void(*)(void))GetProcAddress(module, "vkGetInstanceProcAddr");
+	vkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)(void(*)(void))GetProcAddress(s_module, "vkGetInstanceProcAddr");
 #elif defined(__APPLE__)
 	void* module = dlopen("libvulkan.dylib", RTLD_NOW | RTLD_LOCAL);
 	if (!module)
